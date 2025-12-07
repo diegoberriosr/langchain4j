@@ -23,17 +23,20 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicCreateMessageOptions;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 
 /**
@@ -68,6 +71,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final Boolean disableParallelToolUse;
     private final String userId;
     private final Map<String, Object> customParameters;
+    private final Set<Capability> supportedCapabilities;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -97,6 +101,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 .build();
 
         this.cacheSystemMessages = getOrDefault(builder.cacheSystemMessages, false);
@@ -110,6 +115,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.disableParallelToolUse = builder.disableParallelToolUse;
         this.userId = builder.userId;
         this.customParameters = copy(builder.customParameters);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
 
     public static AnthropicStreamingChatModelBuilder builder() {
@@ -130,6 +136,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Integer maxTokens;
         private List<String> stopSequences;
         private List<ToolSpecification> toolSpecifications;
+        private ResponseFormat responseFormat;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
         private String thinkingType;
@@ -146,6 +153,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Boolean disableParallelToolUse;
         private String userId;
         private Map<String, Object> customParameters;
+        private Set<Capability> supportedCapabilities;
 
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -214,6 +222,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
         public AnthropicStreamingChatModelBuilder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
+        }
+
+        public AnthropicStreamingChatModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
         }
 
         public AnthropicStreamingChatModelBuilder cacheSystemMessages(Boolean cacheSystemMessages) {
@@ -341,6 +354,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public AnthropicStreamingChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return this;
+        }
+
         public AnthropicStreamingChatModel build() {
             return new AnthropicStreamingChatModel(this);
         }
@@ -377,5 +395,10 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     @Override
     public ChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
     }
 }

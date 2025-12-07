@@ -25,17 +25,20 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageReques
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 
 /**
@@ -72,6 +75,7 @@ public class AnthropicChatModel implements ChatModel {
     private final Boolean disableParallelToolUse;
     private final String userId;
     private final Map<String, Object> customParameters;
+    private final Set<Capability> supportedCapabilities;
 
     public AnthropicChatModel(AnthropicChatModelBuilder builder) {
         this.client = AnthropicClient.builder()
@@ -98,6 +102,7 @@ public class AnthropicChatModel implements ChatModel {
         this.disableParallelToolUse = builder.disableParallelToolUse;
         this.userId = builder.userId;
         this.customParameters = copy(builder.customParameters);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -117,6 +122,7 @@ public class AnthropicChatModel implements ChatModel {
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 .build();
     }
 
@@ -141,6 +147,7 @@ public class AnthropicChatModel implements ChatModel {
         private ToolChoice toolChoice;
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
+        private ResponseFormat responseFormat;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
         private String thinkingType;
@@ -156,6 +163,7 @@ public class AnthropicChatModel implements ChatModel {
         private ChatRequestParameters defaultRequestParameters;
         private String userId;
         private Map<String, Object> customParameters;
+        private Set<Capability> supportedCapabilities;
 
         public AnthropicChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -238,6 +246,11 @@ public class AnthropicChatModel implements ChatModel {
 
         public AnthropicChatModelBuilder disableParallelToolUse(Boolean disableParallelToolUse) {
             this.disableParallelToolUse = disableParallelToolUse;
+            return this;
+        }
+
+        public AnthropicChatModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
@@ -360,6 +373,11 @@ public class AnthropicChatModel implements ChatModel {
             return this;
         }
 
+        public AnthropicChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return this;
+        }
+
         public AnthropicChatModel build() {
             return new AnthropicChatModel(this);
         }
@@ -424,5 +442,10 @@ public class AnthropicChatModel implements ChatModel {
     @Override
     public ChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
     }
 }
