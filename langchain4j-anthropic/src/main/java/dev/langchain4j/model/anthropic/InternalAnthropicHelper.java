@@ -1,20 +1,24 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicToolChoice;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseFormat;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseFormatType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,9 +30,6 @@ class InternalAnthropicHelper {
 
     static void validate(ChatRequestParameters parameters) {
         List<String> unsupportedFeatures = new ArrayList<>();
-        if (parameters.responseFormat() != null && parameters.responseFormat().type() == JSON) {
-            unsupportedFeatures.add("JSON response format");
-        }
         if (parameters.frequencyPenalty() != null) {
             unsupportedFeatures.add("Frequency Penalty");
         }
@@ -67,6 +68,7 @@ class InternalAnthropicHelper {
                 .topP(chatRequest.topP())
                 .topK(chatRequest.topK())
                 .thinking(thinking)
+                .outputFormat(toAnthropicResponseFormat(chatRequest.responseFormat()))
                 .customParameters(customParameters);
 
         if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
@@ -82,5 +84,16 @@ class InternalAnthropicHelper {
         }
 
         return requestBuilder.build();
+    }
+
+    static AnthropicResponseFormat toAnthropicResponseFormat(ResponseFormat responseFormat) {
+        if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
+            return null;
+        }
+
+        return AnthropicResponseFormat.builder()
+                .type(AnthropicResponseFormatType.JSON_SCHEMA)
+                .jsonSchema(toMap(responseFormat.jsonSchema().rootElement(), true))
+                .build();
     }
 }
