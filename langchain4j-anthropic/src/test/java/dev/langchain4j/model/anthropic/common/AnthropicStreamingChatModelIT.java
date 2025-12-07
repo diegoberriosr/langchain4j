@@ -69,24 +69,6 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsJsonResponseFormat() {
-        // Anthropic does not support response format yet
-        return false;
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        // Anthropic does not support response format yet
-        return false;
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        // Anthropic does not support response format yet
-        return false;
-    }
-
-    @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return AnthropicStreamingChatModel.builder()
                 .apiKey(getenv("ANTHROPIC_API_KEY"))

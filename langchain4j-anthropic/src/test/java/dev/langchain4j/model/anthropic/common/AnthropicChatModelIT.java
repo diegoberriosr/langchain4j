@@ -57,22 +57,4 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
     protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
         return AnthropicTokenUsage.class;
     }
-
-    @Override
-    protected boolean supportsJsonResponseFormat() {
-        // Anthropic does not support response format yet
-        return false;
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithSchema() {
-        // Anthropic does not support response format yet
-        return false;
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        // Anthropic does not support response format yet
-        return false;
-    }
 }
