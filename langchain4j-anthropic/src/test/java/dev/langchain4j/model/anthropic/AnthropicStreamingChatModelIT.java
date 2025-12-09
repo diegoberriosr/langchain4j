@@ -22,7 +22,10 @@ import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
@@ -241,9 +244,11 @@ class AnthropicStreamingChatModelIT {
     void should_send_custom_parameters() {
 
         // given
-        Map<String, Object> customParameters = Map.of("context_management", Map.of("edits", List.of(Map.of("type", "clear_tool_uses_20250919"))));
+        Map<String, Object> customParameters =
+                Map.of("context_management", Map.of("edits", List.of(Map.of("type", "clear_tool_uses_20250919"))));
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -268,5 +273,41 @@ class AnthropicStreamingChatModelIT {
         assertThat(chatResponse.aiMessage().text()).contains("Berlin");
 
         assertThat(spyingHttpClient.request().body().contains("context_management"));
+    }
+
+    @Test
+    void should_support_structured_outputs() {
+
+        // given
+        ResponseFormat responseFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder()
+                        .rootElement(JsonObjectSchema.builder()
+                                .addStringProperty("authorName")
+                                .addStringProperty("bookTitle")
+                                .additionalProperties(false)
+                                .build())
+                        .build())
+                .build();
+
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .beta("structured-outputs-2025-11-13")
+                .responseFormat(responseFormat)
+                .build();
+
+        String userMessage = "Extract the name of the author and book title: Jonathan Swift wrote Gulliver's Travels";
+
+        String expectedJson = "{\"authorName\": \"Jonathan Swift\", \"bookTitle\": \"Gulliver's Travels\"}";
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(userMessage, handler);
+
+        String response = handler.get().aiMessage().text();
+
+        // then
+        assertThat(response).isEqualToIgnoringWhitespace(expectedJson);
     }
 }

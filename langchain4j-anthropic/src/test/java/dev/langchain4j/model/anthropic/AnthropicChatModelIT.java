@@ -22,8 +22,11 @@ import dev.langchain4j.http.client.SpyingHttpClient;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.net.URI;
 import java.nio.file.Paths;
@@ -548,10 +551,12 @@ class AnthropicChatModelIT {
 
         // given
         record Edit(String type) {}
-        record ContextManagement(List<Edit> edits) { }
-        Map<String, Object> customParameters = Map.of("context_management", new ContextManagement(List.of(new Edit("clear_tool_uses_20250919"))));
+        record ContextManagement(List<Edit> edits) {}
+        Map<String, Object> customParameters =
+                Map.of("context_management", new ContextManagement(List.of(new Edit("clear_tool_uses_20250919"))));
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -574,6 +579,39 @@ class AnthropicChatModelIT {
         assertThat(chatResponse.aiMessage().text()).contains("Berlin");
 
         assertThat(spyingHttpClient.request().body().contains("context_management"));
+    }
+
+    @Test
+    void should_support_structured_outputs() {
+
+        // given
+        ResponseFormat responseFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder()
+                        .rootElement(JsonObjectSchema.builder()
+                                .addStringProperty("authorName")
+                                .addStringProperty("bookTitle")
+                                .additionalProperties(false)
+                                .build())
+                        .build())
+                .build();
+
+        ChatModel model = AnthropicChatModel.builder()
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .beta("structured-outputs-2025-11-13")
+                .responseFormat(responseFormat)
+                .build();
+
+        String userMessage = "Extract the name of the author and book title: Miguel de Cervantes wrote Don Quixote";
+
+        String expectedJson = "{\"authorName\": \"Miguel de Cervantes\", \"bookTitle\": \"Don Quixote\"}";
+
+        // when
+        String response = model.chat(userMessage);
+
+        // then
+        assertThat(response).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     static String randomString(int length) {
