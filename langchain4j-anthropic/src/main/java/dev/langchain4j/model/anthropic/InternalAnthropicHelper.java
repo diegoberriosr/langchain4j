@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicToolChoice;
@@ -90,6 +91,8 @@ class InternalAnthropicHelper {
         if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
             return null;
         }
+
+        ensureNotNull(responseFormat, "JSON schema for ResponseFormat of type JSON");
 
         return AnthropicResponseFormat.builder()
                 .type(AnthropicResponseFormatType.JSON_SCHEMA)
