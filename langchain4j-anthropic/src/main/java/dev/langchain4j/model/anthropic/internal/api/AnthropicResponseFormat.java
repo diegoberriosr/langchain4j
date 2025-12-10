@@ -1,7 +1,11 @@
 package dev.langchain4j.model.anthropic.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicResponseFormatType.JSON_SCHEMA;
 
+import java.util.Map;
+import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -10,8 +14,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import java.util.Map;
-import java.util.Objects;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 
 @JsonDeserialize(builder = AnthropicResponseFormat.Builder.class)
 @JsonInclude(NON_NULL)
@@ -35,6 +38,13 @@ public class AnthropicResponseFormat {
 
     public Map<String, Object> getSchema() {
         return schema;
+    }
+
+    public static AnthropicResponseFormat fromJsonSchema(JsonSchema schema) {
+        return AnthropicResponseFormat.builder()
+                .type(JSON_SCHEMA)
+                .schema(toMap(schema.rootElement(), true))
+                .build();
     }
 
     public static Builder builder() {
@@ -72,7 +82,7 @@ public class AnthropicResponseFormat {
             return this;
         }
 
-        public Builder jsonSchema(Map<String, Object> schema) {
+        public Builder schema(Map<String, Object> schema) {
             this.schema = schema;
             return this;
         }
