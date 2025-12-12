@@ -1,8 +1,8 @@
 package dev.langchain4j.model.anthropic.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicResponseFormatType.JSON_SCHEMA;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMap;
 
 import java.util.Map;
 import java.util.Objects;
@@ -43,7 +43,7 @@ public class AnthropicResponseFormat {
     public static AnthropicResponseFormat fromJsonSchema(JsonSchema schema) {
         return AnthropicResponseFormat.builder()
                 .type(JSON_SCHEMA)
-                .schema(toMap(schema.rootElement(), true))
+                .schema(toAnthropicMap(schema.rootElement()))
                 .build();
     }
 

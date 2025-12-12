@@ -23,6 +23,7 @@ import static java.util.stream.Collectors.toList;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import dev.langchain4j.Internal;
@@ -38,6 +39,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
@@ -58,7 +60,9 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -335,5 +339,56 @@ public class AnthropicMapper {
         }
 
         return AnthropicResponseFormat.fromJsonSchema(responseFormat.jsonSchema());
+    }
+
+    public static Map<String, Object> toAnthropicMap(JsonSchemaElement schemaElement) {
+        return toAnthropicMap(schemaElement, false);
+    }
+
+    private static Map<String, Object> toAnthropicMap(JsonSchemaElement schemaElement, boolean required) {
+        if (schemaElement instanceof JsonObjectSchema objectSchema) {
+            Map<String, Object> map = new LinkedHashMap<>();
+
+            Object objectType = required
+                    ? "object"
+                    : new String[] {"object", "null"};
+
+            map.put("type", objectType);
+
+            if (objectSchema.description() != null) {
+                map.put("description", objectSchema.description());
+            }
+
+            Map<String, Map<String, Object>> properties = new LinkedHashMap<>();
+            objectSchema.properties()
+                    .forEach((property, value) -> properties.put(
+                            property,
+                            toAnthropicMap(value, objectSchema.required().contains(property))
+                    ));
+            map.put("properties", properties);
+
+            if (objectSchema.required() != null) {
+                map.put("required", objectSchema.required());
+            }
+
+            // All object schemas require setAdditional = false
+            map.put("additionalProperties", false);
+
+            return map;
+        }
+        if (schemaElement instanceof JsonEnumSchema enumSchema) {
+            // Anthropic currently does not allow complex types (like unions)
+            // for enum schemas.
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("type", "string");
+
+            if (enumSchema.description() != null) {
+                map.put("description", enumSchema.description());
+            }
+
+            map.put("enum", enumSchema.enumValues());
+        }
+
+        return toMap(schemaElement);
     }
 }
