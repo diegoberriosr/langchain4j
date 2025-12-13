@@ -39,7 +39,6 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
-import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
@@ -60,7 +59,6 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.FinishReason;
@@ -342,18 +340,14 @@ public class AnthropicMapper {
     }
 
     public static Map<String, Object> toAnthropicMap(JsonSchemaElement schemaElement) {
-        return toAnthropicMap(schemaElement, false);
+        return toAnthropicMap(schemaElement, true);
     }
 
     private static Map<String, Object> toAnthropicMap(JsonSchemaElement schemaElement, boolean required) {
         if (schemaElement instanceof JsonObjectSchema objectSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
 
-            Object objectType = required
-                    ? "object"
-                    : new String[] {"object", "null"};
-
-            map.put("type", objectType);
+            map.put("type", "object");
 
             if (objectSchema.description() != null) {
                 map.put("description", objectSchema.description());
@@ -371,24 +365,27 @@ public class AnthropicMapper {
                 map.put("required", objectSchema.required());
             }
 
-            // All object schemas require setAdditional = false
+            // All Anthropic object schemas require additionalProperties=false
+            // https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
             map.put("additionalProperties", false);
+
+            if (!objectSchema.definitions().isEmpty()) {
+                map.put("$defs", mapDefs(objectSchema.definitions()));
+            }
 
             return map;
         }
-        if (schemaElement instanceof JsonEnumSchema enumSchema) {
-            // Anthropic currently does not allow complex types (like unions)
-            // for enum schemas.
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("type", "string");
 
-            if (enumSchema.description() != null) {
-                map.put("description", enumSchema.description());
-            }
+        // Set strict=false to avoid unsupported union types in enum schemas.
+        // https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
+        return toMap(schemaElement, false, required);
+    }
 
-            map.put("enum", enumSchema.enumValues());
-        }
+    private static Map<String, Map<String, Object>> mapDefs(Map<String, JsonSchemaElement> defs) {
+        Map<String, Map<String, Object>> map = new LinkedHashMap<>();
+        defs.forEach((property, schema) ->
+                map.put(property, toAnthropicMap(schema)));
 
-        return toMap(schemaElement);
+        return map;
     }
 }
