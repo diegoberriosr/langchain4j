@@ -2,11 +2,10 @@ package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
-import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicResponseFormat;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicToolChoice;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
-import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +15,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseFormat;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -34,9 +34,6 @@ class InternalAnthropicHelper {
         if (parameters.presencePenalty() != null) {
             unsupportedFeatures.add("Presence Penalty");
         }
-        if (isSchemalessJsonResponseFormat(parameters.responseFormat())) {
-            unsupportedFeatures.add("JSON response format");
-        }
 
         if (!unsupportedFeatures.isEmpty()) {
             if (unsupportedFeatures.size() == 1) {
@@ -45,12 +42,6 @@ class InternalAnthropicHelper {
             throw new UnsupportedFeatureException(
                     String.join(", ", unsupportedFeatures) + " are not supported by Anthropic");
         }
-    }
-
-    private static boolean isSchemalessJsonResponseFormat(ResponseFormat responseFormat) {
-        return responseFormat != null
-                && responseFormat.type() == JSON
-                && responseFormat.jsonSchema() == null;
     }
 
     static AnthropicCreateMessageRequest createAnthropicRequest(
@@ -91,5 +82,13 @@ class InternalAnthropicHelper {
         }
 
         return requestBuilder.build();
+    }
+
+    public static AnthropicResponseFormat toAnthropicResponseFormat(ResponseFormat responseFormat) {
+        if (responseFormat == null || responseFormat.type() == TEXT || responseFormat.jsonSchema() == null) {
+            return null;
+        }
+
+        return AnthropicResponseFormat.fromJsonSchema(responseFormat.jsonSchema());
     }
 }

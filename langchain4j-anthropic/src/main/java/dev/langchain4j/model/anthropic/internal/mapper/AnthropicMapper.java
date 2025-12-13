@@ -331,14 +331,6 @@ public class AnthropicMapper {
         return toolBuilder.build();
     }
 
-    public static AnthropicResponseFormat toAnthropicResponseFormat(ResponseFormat responseFormat) {
-        if (responseFormat == null || responseFormat.type() == TEXT || responseFormat.jsonSchema() == null) {
-            return null;
-        }
-
-        return AnthropicResponseFormat.fromJsonSchema(responseFormat.jsonSchema());
-    }
-
     public static Map<String, Object> toAnthropicMap(JsonSchemaElement schemaElement) {
         return toAnthropicMap(schemaElement, true);
     }
