@@ -1,10 +1,13 @@
 package dev.langchain4j.store.embedding.pinecone;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Collections.emptyList;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import dev.langchain4j.data.segment.TextSegment;
@@ -25,9 +28,7 @@ public class PineconeScoringModel implements ScoringModel {
     private final Pinecone pinecone;
     private final String model;
     private final Integer topN;
-    private final boolean returnDocuments;
     private final Integer maxRetries;
-    private final Map<String, String> parameters;
 
     private PineconeScoringModel(Builder builder) {
         this.pinecone = new Pinecone.Builder(ensureNotBlank(builder.apiKey, "API key"))
@@ -35,13 +36,15 @@ public class PineconeScoringModel implements ScoringModel {
 
         this.model = ensureNotBlank(builder.modelName, "Model name");
         this.topN = builder.topN;
-        this.returnDocuments = getOrDefault(builder.returnDocuments, false);
-        this.parameters = copy(builder.parameters);
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
     }
 
     @Override
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
+        if (isNullOrBlank(query) || isNullOrEmpty(segments)) {
+            return Response.from(emptyList());
+        }
+
         var documents = segments.stream()
                 .map(segment -> Map.of("text", segment.text()))
                 .toList();
@@ -53,8 +56,8 @@ public class PineconeScoringModel implements ScoringModel {
                         documents,
                         RERANKING_FIELD,
                         getOrDefault(topN, documents.size()),
-                        returnDocuments,
-                        parameters),
+                        false,
+                        null),
                 maxRetries);
 
         return Response.from(rerankResult.getData()
@@ -72,8 +75,6 @@ public class PineconeScoringModel implements ScoringModel {
         private String apiKey;
         private String modelName;
         private Integer topN;
-        private Boolean returnDocuments;
-        private Map<String, String> parameters;
         private Integer maxRetries;
 
         /**
@@ -92,31 +93,12 @@ public class PineconeScoringModel implements ScoringModel {
             return this;
         }
 
-
         /**
          * The number of results to return sorted by relevance, defaults to the number of {@link TextSegment}s
          * you send in the request.
          */
         public Builder topN(Integer topN) {
             this.topN = topN;
-            return this;
-        }
-
-        /**
-         * Whether to return the documents in the response.
-         */
-        public Builder returnDocuments(Boolean returnDocuments) {
-            this.returnDocuments = returnDocuments;
-            return this;
-        }
-
-        /**
-         * Additional model-specific parameters.
-         *
-         * @see <a href="https://docs.pinecone.io/guides/search/rerank-results#reranking-models">Model parameters guide</a>
-         */
-        public Builder parameters(Map<String, String> parameters) {
-            this.parameters = parameters;
             return this;
         }
 

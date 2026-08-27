@@ -1,38 +1,86 @@
 package dev.langchain4j.store.embedding.pinecone;
 
+import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.scoring.ScoringModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import java.util.List;
 
 @EnabledIfEnvironmentVariable(named = "PINECONE_API_KEY", matches = ".+")
 class PineconeScoringModelIT {
+
+    private static final String QUERY = "What is a dog?";
 
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = {"", " "})
     void should_throw_exception_during_instantiation_if_api_key_is_not_defined(String illegalApiKey) {
 
-        // given - when - then
-        assertThatThrownBy(() -> PineconeScoringModel.builder().apiKey(illegalApiKey).build())
-                .isInstanceOf(IllegalArgumentException.class);
+        // given
+        PineconeScoringModel.Builder builder = PineconeScoringModel.builder().apiKey(illegalApiKey);
+
+        // when - then
+        assertThatThrownBy(builder::build).isInstanceOf(IllegalArgumentException.class);
     }
 
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = {"", " "})
-    void should_throw_exception_during_instantiation_if_model_is_not_defined(String illegalModelName) {
+    void should_throw_exception_during_instantiation_if_model_is_NOT_defined(String illegalModelName) {
 
-        // given - when - then
-        assertThatThrownBy(() -> PineconeScoringModel.builder().apiKey(System.getenv("PINECONE_API_KEY")).modelName(illegalModelName).build())
-                .isInstanceOf(IllegalArgumentException.class);
+        // given
+        PineconeScoringModel.Builder builder = PineconeScoringModel.builder()
+                        .apiKey(System.getenv("PINECONE_API_KEY"))
+                        .modelName(illegalModelName);
+
+        // when - then
+        assertThatThrownBy(builder::build).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", " "})
+    void should_return_empty_response_if_query_is_invalid(String invalidQuery) {
+
+        // given
+        ScoringModel scoringModel = PineconeScoringModel.builder()
+                .apiKey(System.getenv("PINECONE_API_KEY"))
+                .modelName("pinecone-rerank-v0")
+                .build();
+
+        List<TextSegment> textSegments = List.of(textSegment("Random content"));
+
+        // when
+        List<Double> scores = scoringModel.scoreAll(textSegments, invalidQuery).content();
+
+        // then
+        assertThat(scores).isEmpty();
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @EmptySource
+    void should_return_empty_response_if_text_segments_are_invalid(List<TextSegment> invalidTextSegments) {
+
+        // given
+        ScoringModel scoringModel = PineconeScoringModel.builder()
+                .apiKey(System.getenv("PINECONE_API_KEY"))
+                .modelName("pinecone-rerank-v0")
+                .build();
+
+        // when
+        List<Double> scores = scoringModel.scoreAll(invalidTextSegments, QUERY).content();
+
+        // then
+        assertThat(scores).isEmpty();
     }
 
     @Test
@@ -44,11 +92,10 @@ class PineconeScoringModelIT {
                 .modelName("pinecone-rerank-v0")
                 .build();
 
-        String query = "What is a dog?";
         String document = "Dogs are domesticated descendant of wolves";
 
         // when
-        Double score = scoringModel.score(document, query).content();
+        Double score = scoringModel.score(document, QUERY).content();
 
         // then
         assertThat(score)
@@ -65,14 +112,13 @@ class PineconeScoringModelIT {
                 .modelName("pinecone-rerank-v0")
                 .build();
 
-        String query = "What is a dog?";
         List<TextSegment> documents = List.of(
                 TextSegment.from("A dog is a descendant of wolves"),
                 TextSegment.from("Hünde sind haustieren"),
-                TextSegment.from("Cinco fases de un pene"));
+                TextSegment.from("狗是宠物"));
 
         // when
-        List<Double> scores = scoringModel.scoreAll(documents, query).content();
+        List<Double> scores = scoringModel.scoreAll(documents, QUERY).content();
 
         // then
         assertThat(scores)
@@ -90,14 +136,13 @@ class PineconeScoringModelIT {
                 .topN(1)
                 .build();
 
-        String query = "What is a dog?";
         List<TextSegment> documents = List.of(
                 TextSegment.from("A dog is a descendant of wolves"),
                 TextSegment.from("Hünde sind haustieren"),
                 TextSegment.from("狗是宠物"));
 
         // when
-        List<Double> scores = scoringModel.scoreAll(documents, query).content();
+        List<Double> scores = scoringModel.scoreAll(documents, QUERY).content();
 
         // then
         assertThat(scores)
